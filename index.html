@@ -416,12 +416,17 @@
 
                 while (attempt < 3 && !result) {
                     try {
-                        // 1. CHANGED: A simple GET request (no method, headers, or body needed)
                         const response = await fetch(fetch_url);
                         
                         if (response.ok) {
                             result = await response.json();
                         } else {
+                            // NEW: Instantly break the loop if we hit the Rate Limit
+                            if (response.status === 429) {
+                                attempt = 99; // Force the while loop to stop
+                                throw new Error("Rate limit exceeded. Please wait 60 seconds.");
+                            }
+                            
                             const errText = await response.text();
                             console.error(`API Error (Attempt ${attempt + 1}):`, errText);
                             throw new Error('API Request Failed');
@@ -429,6 +434,7 @@
                     } catch (e) {
                         attempt++;
                         if (attempt < 3) await new Promise(r => setTimeout(r, delays[attempt-1]));
+                        else throw e; // Pass the rate limit error down to the UI
                     }
                 }
 
