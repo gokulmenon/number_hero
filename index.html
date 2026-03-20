@@ -410,10 +410,10 @@
                 let result = null;
                 let attempt = 0;
                 let delays = [1000, 2000, 4000];
-
-                // We construct the GET URL
-                const fetch_url = `/api/audio?word=${encodeURIComponent(word)}&lang=${encodeURIComponent(language)}`;
-
+                
+                // CACHE BUSTER: We added &v=2 to bypass the poisoned cache!
+                const fetch_url = `/api/audio?word=${encodeURIComponent(word)}&lang=${encodeURIComponent(language)}&v=2`;
+                
                 while (attempt < 3 && !result) {
                     try {
                         const response = await fetch(fetch_url);
@@ -421,37 +421,20 @@
                         if (response.ok) {
                             result = await response.json();
                         } else {
-                            // NEW: Instantly break the loop if we hit the Rate Limit
                             if (response.status === 429) {
-                                attempt = 99; // Force the while loop to stop
+                                attempt = 99; // Force loop to stop
                                 throw new Error("Rate limit exceeded. Please wait 60 seconds.");
                             }
-                            
-                            const errText = await response.text();
-                            console.error(`API Error (Attempt ${attempt + 1}):`, errText);
                             throw new Error('API Request Failed');
                         }
                     } catch (e) {
                         attempt++;
                         if (attempt < 3) await new Promise(r => setTimeout(r, delays[attempt-1]));
-                        else throw e; // Pass the rate limit error down to the UI
+                        else throw e;
                     }
                 }
 
-                // Safe fallback: If the model still tries to output conversational text 
-                if (result && result.candidates && result.candidates[0].finishReason === 'OTHER') {
-                    console.warn("Prompt rejected by model filter. Switching to strict script format...");
-                    
-                    // 2. CHANGED: Fallback MUST also be a GET request. We append a query parameter
-                    // so the backend knows to switch to the strict "Speaker:" prompt format.
-                    const fallbackUrl = `${fetch_url}&fallback=true`;
-                    
-                    const fallbackRes = await fetch(fallbackUrl);
-                    result = await fallbackRes.json();
-                }
-
                 if (!result || !result.candidates || !result.candidates[0].content) {
-                    console.error("API Output Error:", JSON.stringify(result));
                     throw new Error("Failed to generate audio content.");
                 }
 
