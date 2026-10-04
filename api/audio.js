@@ -1,4 +1,8 @@
 export default async function handler(req, res) {
+  // Called cross-origin from the games hub (gokulmenon.com/games/*
+  // proxies the page but API URLs are absolute to this deployment).
+  // Public GET-only API; the key stays server-side.
+  res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }

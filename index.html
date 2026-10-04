@@ -412,7 +412,7 @@
                 let delays = [1000, 2000, 4000];
                 
                 // CACHE BUSTER: We added &v=2 to bypass the poisoned cache!
-                const fetch_url = `/api/audio?word=${encodeURIComponent(word)}&lang=${encodeURIComponent(language)}&v=2`;
+                const fetch_url = `https://number-hero.vercel.app/api/audio?word=${encodeURIComponent(word)}&lang=${encodeURIComponent(language)}&v=2`;
                 
                 while (attempt < 3 && !result) {
                     try {
