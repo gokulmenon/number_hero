@@ -68,3 +68,9 @@ function getAdditionSpeech(a, b, lang) {
     if (lang === 'hi') return getHindiWord(a) + " aur " + getHindiWord(b);
     return getEnglishWord(a) + " plus " + getEnglishWord(b);
 }
+
+function getSubtractionSpeech(a, b, lang) {
+    if (lang === 'es') return getSpanishWord(a) + " menos " + getSpanishWord(b);
+    if (lang === 'hi') return getHindiWord(a) + " minus " + getHindiWord(b);
+    return getEnglishWord(a) + " minus " + getEnglishWord(b);
+}
