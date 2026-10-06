@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Number Hero: Counting Coins!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .tile {
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s ease;
+            touch-action: manipulation;
+        }
+        .tile:active { transform: scale(0.92); }
+        .number-text {
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .shake { animation: shake 0.3s ease; }
+        @keyframes pop {
+            0% { transform: scale(0.6); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop { animation: pop 0.35s ease; }
+        .coin {
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-weight: 900;
+            color: #4B5563;
+            border: 3px dashed rgba(75, 85, 99, 0.4);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15), inset 0 -4px 6px rgba(0,0,0,0.12);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Top bar -->
+    <header class="max-w-3xl mx-auto px-4 pt-4 flex items-center justify-between">
+        <a href="./" class="tile text-sm font-bold text-indigo-600 bg-indigo-100 border border-indigo-200 rounded-full px-4 py-2">← Number Hero</a>
+        <h1 class="text-xl md:text-2xl font-black text-gray-800">🪙 Counting Coins</h1>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 pb-10">
+        <!-- Score bar -->
+        <div class="mt-4 flex items-center justify-between bg-white rounded-2xl shadow px-4 py-3">
+            <span class="font-bold text-gray-600">Round <span id="round-num" class="text-indigo-600">1</span>/10</span>
+            <span class="font-black text-xl text-gray-800 number-text"><span id="score">0</span> ⭐</span>
+            <span id="streak" class="font-bold text-orange-500"></span>
+        </div>
+
+        <!-- Prompt card -->
+        <div class="mt-4 bg-white rounded-3xl shadow-lg p-6 text-center">
+            <p class="text-2xl md:text-3xl font-black text-gray-800">How much money?</p>
+            <div id="coins" class="mt-5 flex flex-wrap items-center justify-center gap-4"></div>
+            <p class="mt-4 text-sm font-bold text-gray-400">penny 1¢ · nickel 5¢ · dime 10¢ · quarter 25¢</p>
+        </div>
+
+        <!-- Options -->
+        <div id="options" class="mt-4 grid grid-cols-2 gap-4"></div>
+
+        <!-- Feedback -->
+        <p id="feedback" class="mt-4 h-8 text-center text-xl font-black"></p>
+    </main>
+
+    <!-- End screen -->
+    <div id="end-overlay" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+        <div class="pop bg-white rounded-3xl shadow-2xl p-8 text-center max-w-sm w-full">
+            <p id="end-stars" class="text-5xl">⭐⭐⭐</p>
+            <h2 class="mt-2 text-2xl font-black text-gray-800">Money master!</h2>
+            <p class="mt-1 text-lg font-bold text-gray-600">Score: <span id="end-score" class="number-text">0</span></p>
+            <button id="btn-again" class="tile mt-5 bg-indigo-500 text-white font-black rounded-2xl px-8 py-3 text-lg shadow-lg">Play Again</button>
+            <a href="./" class="block mt-3 text-sm font-bold text-indigo-500">← Back</a>
+        </div>
+    </div>
+
+    <script>
+        let round = 1, score = 0, streak = 0, locked = false;
+        let answer = 0;
+
+        const COINS = [
+            { name: 'penny', cents: 1, bg: '#E8A87C', size: 68 },
+            { name: 'nickel', cents: 5, bg: '#D1D5DB', size: 76 },
+            { name: 'dime', cents: 10, bg: '#E5E7EB', size: 62 },
+            { name: 'quarter', cents: 25, bg: '#C9CED6', size: 88 },
+        ];
+
+        const OPTION_COLORS = [
+            'bg-blue-100 text-blue-700 border-blue-300',
+            'bg-amber-100 text-amber-700 border-amber-300',
+            'bg-emerald-100 text-emerald-700 border-emerald-300',
+            'bg-purple-100 text-purple-700 border-purple-300',
+        ];
+
+        function shuffle(arr) {
+            const a = arr.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        function fmt(c) {
+            return c + '¢';
+        }
+
+        function newRound() {
+            locked = false;
+            const n = 2 + Math.floor(Math.random() * 3); // 2–4 coins
+            const picks = [];
+            for (let i = 0; i < n; i++) picks.push(COINS[Math.floor(Math.random() * COINS.length)]);
+            answer = picks.reduce((s, c) => s + c.cents, 0);
+
+            document.getElementById('round-num').textContent = round;
+            document.getElementById('feedback').textContent = '';
+
+            const box = document.getElementById('coins');
+            box.innerHTML = '';
+            picks.forEach((c) => {
+                const d = document.createElement('div');
+                d.className = 'coin';
+                d.style.width = c.size + 'px';
+                d.style.height = c.size + 'px';
+                d.style.background = c.bg;
+                d.innerHTML = `<span class="text-lg leading-none">${c.cents}¢</span><span class="text-[10px] leading-none mt-1">${c.name}</span>`;
+                box.appendChild(d);
+            });
+
+            const cands = new Set();
+            for (const d of shuffle([1, -1, 2, -2, 5, -5, 10, -10, 3, -3])) {
+                const t = answer + d;
+                if (t > 0 && t !== answer) cands.add(t);
+                if (cands.size >= 3) break;
+            }
+            const opts = shuffle([answer, ...cands]);
+            const optBox = document.getElementById('options');
+            optBox.innerHTML = '';
+            opts.forEach((v, i) => {
+                const b = document.createElement('button');
+                b.className = `tile w-full aspect-[4/3] rounded-2xl border-b-4 text-4xl md:text-5xl font-black number-text ${OPTION_COLORS[i % 4]}`;
+                b.textContent = fmt(v);
+                b.onclick = () => pick(v, b);
+                optBox.appendChild(b);
+            });
+        }
+
+        function pick(v, btn) {
+            if (locked) return;
+            const fb = document.getElementById('feedback');
+            if (v === answer) {
+                locked = true;
+                const gained = 100 + streak * 10;
+                score += gained;
+                streak++;
+                document.getElementById('score').textContent = score;
+                document.getElementById('streak').textContent = streak >= 2 ? `🔥 x${streak}` : '';
+                btn.classList.add('pop');
+                fb.textContent = `🎉 Correct! +${gained}`;
+                fb.className = 'mt-4 h-8 text-center text-xl font-black text-emerald-600';
+                setTimeout(next, 1600);
+            } else {
+                streak = 0;
+                document.getElementById('streak').textContent = '';
+                btn.classList.remove('shake');
+                void btn.offsetWidth; // restart animation
+                btn.classList.add('shake');
+                fb.textContent = 'Try again! 💪';
+                fb.className = 'mt-4 h-8 text-center text-xl font-black text-orange-500';
+            }
+        }
+
+        function next() {
+            if (round >= 10) return endGame();
+            round++;
+            newRound();
+        }
+
+        function endGame() {
+            document.getElementById('end-score').textContent = score;
+            const stars = score >= 1100 ? '⭐⭐⭐' : score >= 800 ? '⭐⭐' : '⭐';
+            document.getElementById('end-stars').textContent = stars;
+            document.getElementById('end-overlay').classList.remove('hidden');
+        }
+
+        document.getElementById('btn-again').onclick = () => {
+            round = 1; score = 0; streak = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('streak').textContent = '';
+            document.getElementById('end-overlay').classList.add('hidden');
+            newRound();
+        };
+
+        newRound();
+    </script>
+</body>
+</html>
