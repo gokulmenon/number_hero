@@ -38,18 +38,11 @@
     </style>
 </head>
 <body class="min-h-screen">
-    <script src="words.js"></script>
-    <script src="audio.js"></script>
 
     <!-- Top bar -->
     <header class="max-w-3xl mx-auto px-4 pt-4 flex items-center justify-between">
-        <a href="index.html" class="tile text-sm font-bold text-indigo-600 bg-indigo-100 border border-indigo-200 rounded-full px-4 py-2">← Number Hero</a>
+        <a href="./" class="tile text-sm font-bold text-indigo-600 bg-indigo-100 border border-indigo-200 rounded-full px-4 py-2">← Number Hero</a>
         <h1 class="text-xl md:text-2xl font-black text-gray-800">⚖️ Bigger or Smaller</h1>
-        <div class="flex items-center gap-2 text-sm font-bold text-gray-600">
-            <label class="flex items-center gap-1"><input type="radio" name="language" value="en" checked onchange="changeLanguage()"> EN</label>
-            <label class="flex items-center gap-1"><input type="radio" name="language" value="es" onchange="changeLanguage()"> ES</label>
-            <label class="flex items-center gap-1"><input type="radio" name="language" value="hi" onchange="changeLanguage()"> HI</label>
-        </div>
     </header>
 
     <main class="max-w-3xl mx-auto px-4 pb-10">
@@ -63,10 +56,6 @@
         <!-- Prompt card -->
         <div class="mt-4 bg-white rounded-3xl shadow-lg p-6 text-center">
             <p class="text-2xl md:text-3xl font-black text-gray-800">Which is <span id="mode-word" class="text-indigo-600">bigger</span>?</p>
-            <button id="btn-say" class="tile mt-3 inline-flex items-center gap-2 bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-full px-5 py-2">
-                🔊 Say It
-            </button>
-            <p id="say-error" class="hidden mt-1 text-xs text-red-500 font-bold">Couldn't play audio — check connection</p>
         </div>
 
         <!-- The two numbers are the options -->
@@ -83,12 +72,11 @@
             <h2 class="mt-2 text-2xl font-black text-gray-800">Comparison champion!</h2>
             <p class="mt-1 text-lg font-bold text-gray-600">Score: <span id="end-score" class="number-text">0</span></p>
             <button id="btn-again" class="tile mt-5 bg-indigo-500 text-white font-black rounded-2xl px-8 py-3 text-lg shadow-lg">Play Again</button>
-            <a href="index.html" class="block mt-3 text-sm font-bold text-indigo-500">← Back to Number Hero</a>
+            <a href="./" class="block mt-3 text-sm font-bold text-indigo-500">← Back</a>
         </div>
     </div>
 
     <script>
-        let selectedLang = 'en';
         let round = 1, score = 0, streak = 0, answer = 0, locked = false;
         let curA = 0, curB = 0, mode = 'bigger';
 
@@ -97,12 +85,6 @@
             'bg-amber-100 text-amber-700 border-amber-300',
         ];
 
-        function changeLanguage() {
-            const radios = document.getElementsByName('language');
-            for (const radio of radios) {
-                if (radio.checked) { selectedLang = radio.value; break; }
-            }
-        }
 
         function shuffle(arr) {
             const a = arr.slice();
@@ -138,21 +120,6 @@
             });
         }
 
-        async function sayPrompt() {
-            const btn = document.getElementById('btn-say');
-            const err = document.getElementById('say-error');
-            err.classList.add('hidden');
-            btn.disabled = true;
-            try {
-                const spoken = getTranslation(curA, selectedLang) + ', ' + getTranslation(curB, selectedLang);
-                await speakWord(spoken, selectedLang);
-            } catch (e) {
-                console.error(e);
-                err.classList.remove('hidden');
-            } finally {
-                btn.disabled = false;
-            }
-        }
 
         function pick(v, btn) {
             if (locked) return;
@@ -167,7 +134,6 @@
                 btn.classList.add('pop');
                 fb.textContent = `🎉 Correct! +${gained}`;
                 fb.className = 'mt-4 h-8 text-center text-xl font-black text-emerald-600';
-                sayPrompt();
                 setTimeout(next, 1600);
             } else {
                 streak = 0;
@@ -193,7 +159,6 @@
             document.getElementById('end-overlay').classList.remove('hidden');
         }
 
-        document.getElementById('btn-say').onclick = sayPrompt;
         document.getElementById('btn-again').onclick = () => {
             round = 1; score = 0; streak = 0;
             document.getElementById('score').textContent = '0';
