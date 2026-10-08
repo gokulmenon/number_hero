@@ -66,7 +66,7 @@ async function callGemini(apiKey, model, userPrompt) {
     generationConfig: {
       response_mime_type: 'application/json',
       temperature: 0.9,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 16384,
     },
   };
   const r = await fetch(
