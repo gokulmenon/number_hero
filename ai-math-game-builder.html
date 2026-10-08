@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Number Hero: AI Math Game Builder!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .tile {
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s ease;
+            touch-action: manipulation;
+        }
+        .tile:active { transform: scale(0.96); }
+        .suggestion { cursor: pointer; }
+        .suggestion:hover { transform: translateY(-2px); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            width: 64px; height: 64px;
+            border: 6px solid #e0e7ff; border-top-color: #4f46e5;
+            border-radius: 50%; animation: spin 0.9s linear infinite;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.4s ease; }
+        textarea { -webkit-user-select: text; user-select: text; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Top bar -->
+    <header class="max-w-3xl mx-auto px-4 pt-4 flex items-center justify-between">
+        <a href="./" class="tile text-sm font-bold text-indigo-600 bg-indigo-100 border border-indigo-200 rounded-full px-4 py-2">← Number Hero</a>
+        <h1 class="text-xl md:text-2xl font-black text-gray-800">🤖 AI Math Game Builder</h1>
+        <div class="w-24"></div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 pb-10">
+
+        <!-- Prompt stage -->
+        <div id="prompt-stage" class="mt-6">
+            <div class="bg-white rounded-3xl shadow-lg p-6 md:p-8">
+                <h2 class="text-2xl font-black text-gray-800 text-center">Describe your dream math game!</h2>
+                <p class="text-gray-500 font-bold text-center mt-2">Characters, how you play, what the math looks like — anything you imagine.</p>
+                <textarea id="prompt-input" rows="3" maxlength="300" placeholder="A dinosaur restaurant where I count dino nuggets…"
+                    class="mt-4 w-full text-lg font-bold text-gray-800 bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                <button id="build-btn" onclick="buildGame()"
+                    class="tile mt-4 w-full text-2xl font-black text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl py-4 shadow-lg">
+                    ✨ Build My Game
+                </button>
+            </div>
+
+            <!-- Suggested prompts -->
+            <div id="suggestions" class="mt-6">
+                <h3 class="text-lg font-black text-gray-700 text-center mb-3">Or try one of these:</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="useSuggestion(this)" data-prompt="Dino Diner — you're the chef! Count dino nuggets onto plates to serve your hungry customers"
+                        class="suggestion tile text-left bg-gradient-to-br from-green-400 to-emerald-600 text-white rounded-2xl p-5 shadow-lg">
+                        <div class="text-3xl">🦕</div>
+                        <div class="font-black text-lg mt-1">Dino Diner</div>
+                        <div class="font-bold text-sm opacity-90">You're the chef! Count dino nuggets onto plates to serve your hungry customers</div>
+                    </button>
+                    <button onclick="useSuggestion(this)" data-prompt="Space Rescue — solve rocket sums to fuel your ship and rescue the stranded aliens"
+                        class="suggestion tile text-left bg-gradient-to-br from-indigo-500 to-purple-700 text-white rounded-2xl p-5 shadow-lg">
+                        <div class="text-3xl">🚀</div>
+                        <div class="font-black text-lg mt-1">Space Rescue</div>
+                        <div class="font-bold text-sm opacity-90">Solve rocket sums to fuel your ship and rescue the stranded aliens</div>
+                    </button>
+                    <button onclick="useSuggestion(this)" data-prompt="Ice Cream Meltdown — race the sun! Solve subtractions to stack your scoops before they melt"
+                        class="suggestion tile text-left bg-gradient-to-br from-pink-400 to-rose-600 text-white rounded-2xl p-5 shadow-lg">
+                        <div class="text-3xl">🍦</div>
+                        <div class="font-black text-lg mt-1">Ice Cream Meltdown</div>
+                        <div class="font-bold text-sm opacity-90">Race the sun! Solve subtractions to stack your scoops before they melt</div>
+                    </button>
+                    <button onclick="useSuggestion(this)" data-prompt="Pearl Diver — find the missing numbers in the glowing pearl sequence to unlock the treasure chest"
+                        class="suggestion tile text-left bg-gradient-to-br from-cyan-400 to-blue-600 text-white rounded-2xl p-5 shadow-lg">
+                        <div class="text-3xl">🧜</div>
+                        <div class="font-black text-lg mt-1">Pearl Diver</div>
+                        <div class="font-bold text-sm opacity-90">Find the missing numbers in the glowing pearl sequence to unlock the treasure chest</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading stage -->
+        <div id="loading-stage" class="mt-6 hidden">
+            <div class="bg-white rounded-3xl shadow-lg p-10 flex flex-col items-center">
+                <div class="spinner"></div>
+                <p id="loading-msg" class="mt-6 text-xl font-black text-gray-700 text-center">Teaching the robot math…</p>
+                <p class="mt-2 text-gray-400 font-bold text-center text-sm">Dreaming up your game — this takes a few seconds</p>
+            </div>
+        </div>
+
+        <!-- Game stage -->
+        <div id="game-stage" class="mt-6 hidden">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <button onclick="regenerate()" class="tile font-black text-white bg-gradient-to-r from-amber-400 to-orange-500 rounded-full px-6 py-3 shadow-lg">🔁 Regenerate</button>
+                <button onclick="newGame()" class="tile font-black text-indigo-700 bg-indigo-100 border-2 border-indigo-300 rounded-full px-6 py-3">✨ New game</button>
+            </div>
+            <div class="bg-white rounded-3xl shadow-lg overflow-hidden">
+                <iframe id="game-frame" title="Your AI-built math game"
+                    sandbox="allow-scripts"
+                    class="w-full border-0" style="height: 80vh; min-height: 560px;"></iframe>
+            </div>
+            <p id="image-status" class="mt-2 text-center text-sm font-bold text-gray-400"></p>
+        </div>
+
+        <!-- Error stage -->
+        <div id="error-stage" class="mt-6 hidden">
+            <div class="bg-white rounded-3xl shadow-lg p-8 text-center">
+                <div class="text-5xl">😅</div>
+                <p class="mt-4 text-xl font-black text-gray-700">Oops — the game machine hiccuped!</p>
+                <p id="error-msg" class="mt-2 text-gray-500 font-bold"></p>
+                <button onclick="buildGame()" class="tile mt-6 font-black text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full px-8 py-3 shadow-lg">Try again</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Relative API paths so this works both standalone and under the games-hub proxy.
+        const API_BASE = 'api';
+        let lastPrompt = '';
+        let loadingTimer = null;
+
+        const LOADING_MSGS = [
+            'Teaching the robot math…',
+            'Painting your pictures…',
+            'Building the game board…',
+            'Polishing the stars…',
+            'Warming up the numbers…',
+        ];
+
+        function show(id) {
+            for (const s of ['prompt-stage', 'loading-stage', 'game-stage', 'error-stage']) {
+                document.getElementById(s).classList.toggle('hidden', s !== id);
+            }
+        }
+
+        function useSuggestion(btn) {
+            document.getElementById('prompt-input').value = btn.dataset.prompt;
+            buildGame();
+        }
+
+        async function buildGame() {
+            const prompt = (document.getElementById('prompt-input').value || '').trim() || lastPrompt;
+            if (!prompt) {
+                document.getElementById('prompt-input').focus();
+                return;
+            }
+            lastPrompt = prompt;
+            show('loading-stage');
+            let mi = 0;
+            document.getElementById('loading-msg').textContent = LOADING_MSGS[0];
+            loadingTimer = setInterval(() => {
+                mi = (mi + 1) % LOADING_MSGS.length;
+                document.getElementById('loading-msg').textContent = LOADING_MSGS[mi];
+            }, 2500);
+
+            try {
+                const res = await fetch(`${API_BASE}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Build failed');
+                clearInterval(loadingTimer);
+                renderGame(data.html, data.images || []);
+            } catch (e) {
+                clearInterval(loadingTimer);
+                document.getElementById('error-msg').textContent = e.message;
+                show('error-stage');
+            }
+        }
+
+        function renderGame(html, images) {
+            show('game-stage');
+            const frame = document.getElementById('game-frame');
+            const status = document.getElementById('image-status');
+            // Render immediately with placeholders; swap images in as they arrive.
+            frame.srcdoc = html;
+            frame.classList.remove('fade-up');
+            void frame.offsetWidth;
+            frame.classList.add('fade-up');
+
+            if (!images.length) {
+                status.textContent = '';
+                return;
+            }
+            let done = 0;
+            status.textContent = `🎨 Painting ${images.length} picture${images.length > 1 ? 's' : ''}…`;
+            const swaps = {};
+            Promise.all(images.map((img) =>
+                fetch(`${API_BASE}/image`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: img.prompt }),
+                })
+                    .then((r) => r.json())
+                    .then((d) => { if (d.dataUri) swaps[`{{IMAGE:${img.name}}}`] = d.dataUri; })
+                    .catch(() => {})
+                    .finally(() => {
+                        done++;
+                        status.textContent = `🎨 Painting pictures… ${done}/${images.length}`;
+                    })
+            )).then(() => {
+                let finalHtml = html;
+                for (const [token, uri] of Object.entries(swaps)) {
+                    finalHtml = finalHtml.split(token).join(uri);
+                }
+                if (Object.keys(swaps).length) frame.srcdoc = finalHtml;
+                status.textContent = Object.keys(swaps).length
+                    ? '✨ Pictures ready!'
+                    : '';
+                setTimeout(() => { status.textContent = ''; }, 3000);
+            });
+        }
+
+        function regenerate() {
+            // New roll, same prompt.
+            show('loading-stage');
+            buildGame();
+        }
+
+        function newGame() {
+            document.getElementById('prompt-input').value = '';
+            show('prompt-stage');
+        }
+
+        // Enter to build (Shift+Enter for newline).
+        document.getElementById('prompt-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); buildGame(); }
+        });
+    </script>
+</body>
+</html>
