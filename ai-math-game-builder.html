@@ -53,10 +53,13 @@
                 <p class="text-gray-500 font-bold text-center mt-2">Characters, how you play, what the math looks like — anything you imagine.</p>
                 <textarea id="prompt-input" rows="3" maxlength="300" placeholder="A dinosaur restaurant where I count dino nuggets…"
                     class="mt-4 w-full text-lg font-bold text-gray-800 bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
-                <button id="build-btn" onclick="buildGame()"
+                <button id="build-btn" onclick="onBuildClick()"
                     class="tile mt-4 w-full text-2xl font-black text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl py-4 shadow-lg">
                     ✨ Build My Game
                 </button>
+                <!-- Turnstile bot check renders here on Build click -->
+                <div id="turnstile-slot" class="mt-4 hidden flex justify-center"></div>
+                <p class="mt-3 text-center text-xs font-bold text-gray-400">🤖 Protected by a quick human check so bots can't burn the game machine</p>
             </div>
 
             <!-- Suggested prompts -->
@@ -120,7 +123,7 @@
                 <div class="text-5xl">😅</div>
                 <p class="mt-4 text-xl font-black text-gray-700">Oops — the game machine hiccuped!</p>
                 <p id="error-msg" class="mt-2 text-gray-500 font-bold"></p>
-                <button onclick="buildGame()" class="tile mt-6 font-black text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full px-8 py-3 shadow-lg">Try again</button>
+                <button onclick="onBuildClick()" class="tile mt-6 font-black text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full px-8 py-3 shadow-lg">Try again</button>
             </div>
         </div>
 
@@ -129,8 +132,12 @@
     <script>
         // Relative API paths so this works both standalone and under the games-hub proxy.
         const API_BASE = 'api';
+        // Cloudflare Turnstile site key (public). Empty = not configured yet.
+        const TURNSTILE_SITE_KEY = '';
         let lastPrompt = '';
         let loadingTimer = null;
+        let turnstileWidgetId = null;
+        let turnstileLoaded = false;
 
         const LOADING_MSGS = [
             'Teaching the robot math…',
@@ -148,16 +155,63 @@
 
         function useSuggestion(btn) {
             document.getElementById('prompt-input').value = btn.dataset.prompt;
-            buildGame();
+            onBuildClick();
         }
 
-        async function buildGame() {
+        // Two-step bot check (same pattern as the home-monitoring demo):
+        // the Turnstile widget only renders after Build is clicked, and the
+        // game request fires only on challenge success. Tokens are single-use.
+        function onBuildClick() {
             const prompt = (document.getElementById('prompt-input').value || '').trim() || lastPrompt;
             if (!prompt) {
                 document.getElementById('prompt-input').focus();
                 return;
             }
             lastPrompt = prompt;
+            if (!TURNSTILE_SITE_KEY) {
+                document.getElementById('error-msg').textContent = 'Bot protection is being set up — check back soon.';
+                show('error-stage');
+                return;
+            }
+            // The widget lives in the prompt card — make sure it's visible.
+            show('prompt-stage');
+            const slot = document.getElementById('turnstile-slot');
+            slot.classList.remove('hidden');
+            if (turnstileWidgetId !== null) {
+                window.turnstile.reset(turnstileWidgetId);
+                return;
+            }
+            if (turnstileLoaded) {
+                renderWidget(slot);
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+            script.async = true;
+            script.defer = true;
+            script.onload = () => { turnstileLoaded = true; renderWidget(slot); };
+            script.onerror = () => {
+                document.getElementById('error-msg').textContent = 'Could not load the bot check — check your connection and try again.';
+                show('error-stage');
+            };
+            document.head.appendChild(script);
+        }
+
+        function renderWidget(slot) {
+            turnstileWidgetId = window.turnstile.render(slot, {
+                sitekey: TURNSTILE_SITE_KEY,
+                callback: (token) => buildGame(token),
+                'error-callback': () => {
+                    document.getElementById('error-msg').textContent = 'Bot check failed — please try again.';
+                    show('error-stage');
+                },
+            });
+        }
+
+        async function buildGame(turnstileToken) {
+            const prompt = lastPrompt;
+            if (!prompt) return;
+            document.getElementById('turnstile-slot').classList.add('hidden');
             show('loading-stage');
             let mi = 0;
             document.getElementById('loading-msg').textContent = LOADING_MSGS[0];
@@ -172,7 +226,7 @@
                 const res = await fetch(`${API_BASE}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt }),
+                    body: JSON.stringify({ prompt, turnstileToken }),
                     signal: ctrl.signal,
                 });
                 clearTimeout(timeout);
@@ -234,9 +288,9 @@
         }
 
         function regenerate() {
-            // New roll, same prompt.
-            show('loading-stage');
-            buildGame();
+            // New roll, same prompt — fresh bot check, tokens are single-use.
+            document.getElementById('prompt-input').value = lastPrompt;
+            onBuildClick();
         }
 
         function newGame() {
@@ -246,7 +300,7 @@
 
         // Enter to build (Shift+Enter for newline).
         document.getElementById('prompt-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); buildGame(); }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onBuildClick(); }
         });
     </script>
 </body>
