@@ -40,7 +40,7 @@ export default async function handler(req, res) {
   const prompt = String(req.body?.prompt || '').trim().slice(0, 500);
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-  const model = process.env.GEMINI_IMAGE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+  const model = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
   res.setHeader('Cache-Control', 'no-store');
 
   try {
@@ -59,10 +59,7 @@ export default async function handler(req, res) {
     const data = await r.json();
     const parts = data?.candidates?.[0]?.content?.parts || [];
     const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
-    if (!imgPart) {
-      console.error('image debug: parts=' + JSON.stringify(parts).slice(0, 800));
-      throw new Error('No image in response');
-    }
+    if (!imgPart) throw new Error('No image in response');
     const mime = imgPart.inlineData.mimeType || 'image/png';
     return res.status(200).json({ dataUri: `data:${mime};base64,${imgPart.inlineData.data}` });
   } catch (error) {
