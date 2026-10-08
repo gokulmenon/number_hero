@@ -123,7 +123,7 @@ export default async function handler(req, res) {
   const prompt = sanitizePrompt(req.body?.prompt);
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
   // Never cache generated games.
   res.setHeader('Cache-Control', 'no-store');
