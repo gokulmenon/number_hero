@@ -40,7 +40,7 @@ export default async function handler(req, res) {
   const prompt = String(req.body?.prompt || '').trim().slice(0, 500);
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-  const model = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.0-flash-preview-image-generation';
+  const model = process.env.GEMINI_IMAGE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
   res.setHeader('Cache-Control', 'no-store');
 
   try {
