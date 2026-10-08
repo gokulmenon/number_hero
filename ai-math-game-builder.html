@@ -96,7 +96,7 @@
             <div class="bg-white rounded-3xl shadow-lg p-10 flex flex-col items-center">
                 <div class="spinner"></div>
                 <p id="loading-msg" class="mt-6 text-xl font-black text-gray-700 text-center">Teaching the robot math…</p>
-                <p class="mt-2 text-gray-400 font-bold text-center text-sm">Dreaming up your game — this takes a few seconds</p>
+                <p class="mt-2 text-gray-400 font-bold text-center text-sm">Dreaming up your game — usually takes about a minute, hang tight!</p>
             </div>
         </div>
 
@@ -167,18 +167,25 @@
             }, 2500);
 
             try {
+                const ctrl = new AbortController();
+                const timeout = setTimeout(() => ctrl.abort(), 150000);
                 const res = await fetch(`${API_BASE}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt }),
+                    signal: ctrl.signal,
                 });
+                clearTimeout(timeout);
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.error || 'Build failed');
                 clearInterval(loadingTimer);
                 renderGame(data.html, data.images || []);
             } catch (e) {
                 clearInterval(loadingTimer);
-                document.getElementById('error-msg').textContent = e.message;
+                document.getElementById('error-msg').textContent =
+                    e.name === 'AbortError'
+                        ? 'That took too long — please try again.'
+                        : e.message;
                 show('error-stage');
             }
         }

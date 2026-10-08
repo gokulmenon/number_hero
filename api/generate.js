@@ -66,7 +66,7 @@ async function callGemini(apiKey, model, userPrompt) {
     generationConfig: {
       response_mime_type: 'application/json',
       temperature: 0.9,
-      maxOutputTokens: 16384,
+      maxOutputTokens: 8192,
     },
   };
   const r = await fetch(
@@ -129,13 +129,17 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
   try {
+    const t0 = Date.now();
     let data = await callGemini(apiKey, model, prompt);
+    console.log(`generate: first attempt ${Date.now() - t0}ms`);
     try {
       return res.status(200).json(extractGame(data));
     } catch (e) {
       // One silent auto-retry on malformed output.
       console.warn('generate: malformed output, retrying once:', e.message);
+      const t1 = Date.now();
       data = await callGemini(apiKey, model, prompt);
+      console.log(`generate: retry attempt ${Date.now() - t1}ms`);
       return res.status(200).json(extractGame(data));
     }
   } catch (error) {
