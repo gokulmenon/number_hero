@@ -59,7 +59,10 @@ export default async function handler(req, res) {
     const data = await r.json();
     const parts = data?.candidates?.[0]?.content?.parts || [];
     const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
-    if (!imgPart) throw new Error('No image in response');
+    if (!imgPart) {
+      console.error('image debug: parts=' + JSON.stringify(parts).slice(0, 800));
+      throw new Error('No image in response');
+    }
     const mime = imgPart.inlineData.mimeType || 'image/png';
     return res.status(200).json({ dataUri: `data:${mime};base64,${imgPart.inlineData.data}` });
   } catch (error) {
